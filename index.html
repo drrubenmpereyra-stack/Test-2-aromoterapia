@@ -44,6 +44,46 @@
             font-size: 0.9rem;
             margin-bottom: 1.5rem;
         }
+        .form-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--blue-border);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .error-msg {
+            color: #e63946;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+        .btn-custom {
+            background-color: var(--blue-border);
+            color: var(--white);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        .btn-custom:hover {
+            background-color: #457b9d;
+        }
         .progress-bar {
             background: #e9ecef;
             height: 8px;
@@ -144,12 +184,32 @@
         <h1>Test de Autoevaluación - Jornada 2</h1>
         <p class="subtitle">Seminario de Aromaterapia en Psicoterapia Focalizada y Neurociencias</p>
         
-        <div class="progress-bar">
-            <div id="progressFill" class="progress-fill"></div>
+        <!-- PANTALLA DE LOGIN PREVIA AL TEST -->
+        <div id="loginScreen">
+            <h2 style="color: var(--blue-border); text-align: center; margin-bottom: 1.5rem; font-size: 1.2rem;">Identificación del Estudiante</h2>
+            <form id="formLoginTest">
+                <div class="form-group">
+                    <label for="userTest">Usuario</label>
+                    <input type="text" id="userTest" required placeholder="Ingrese su usuario (ej: P1)">
+                </div>
+                <div class="form-group">
+                    <label for="passTest">Contraseña</label>
+                    <input type="password" id="passTest" required placeholder="Ingrese su contraseña">
+                </div>
+                <button type="submit" class="btn-custom" style="margin-top: 1rem;">Iniciar Test</button>
+                <div id="errorLoginMsg" class="error-msg"></div>
+            </form>
         </div>
 
-        <div id="quizContainer">
-            <!-- Las preguntas se inyectan dinámicamente de a una -->
+        <!-- CONTENEDOR DEL TEST (OCULTO HASTA LOGUEARSE) -->
+        <div id="testArea" style="display: none;">
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+
+            <div id="quizContainer">
+                <!-- Las preguntas se inyectan dinámicamente -->
+            </div>
         </div>
 
         <div id="resultadoBox">
@@ -160,7 +220,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAVFOWLQtNdaa_pDW8qvFjajmYY08jn9hY",
@@ -177,6 +237,56 @@
             db = getFirestore(app);
         } catch (err) {
             console.error("Error al conectar Firebase:", err);
+        }
+
+        let estudianteActual = "";
+
+        // Manejar evento de login en el test
+        document.getElementById("formLoginTest").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const uInput = document.getElementById("userTest").value.trim();
+            const pInput = document.getElementById("passTest").value.trim();
+            const errorMsg = document.getElementById("errorLoginMsg");
+
+            errorMsg.innerText = "Verificando credenciales...";
+
+            if (uInput === "P1" && pInput === "XX") {
+                estudianteActual = "Participante de Prueba (P1)";
+                iniciarQuiz();
+                return;
+            }
+
+            let encontrado = false;
+            try {
+                if (db) {
+                    const querySnapshot = await getDocs(collection(db, "usuarios"));
+                    querySnapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
+                        if (data.usuarioAsignado && data.usuarioAsignado.trim() === uInput) {
+                            if (data.passAsignada && data.passAsignada.trim() === pInput) {
+                                if (data.restringido !== true) {
+                                    estudianteActual = data.apellidoNombres;
+                                    encontrado = true;
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Error consultando base de datos:", err);
+            }
+
+            if (encontrado) {
+                iniciarQuiz();
+            } else {
+                errorMsg.innerText = "Usuario o contraseña incorrectos.";
+            }
+        });
+
+        function iniciarQuiz() {
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("testArea").style.display = "block";
+            mostrarPregunta();
         }
 
         const preguntasData = [
@@ -375,16 +485,13 @@
         async function finalizarTest() {
             document.getElementById("progressFill").style.width = "100%";
             
-            // Obtener el nombre del participante (puede venir de localStorage de la sesión principal)
-            let participanteNombre = localStorage.getItem("participanteAromaterapia") || prompt("Por favor, ingrese su Apellido y Nombres completos para registrar su test:") || "Participante Aula";
-
             try {
                 if (db) {
                     await addDoc(collection(db, "resultados_tests"), {
                         test: "Test 2 - Jornada 2",
                         score: puntajeTotal,
                         fecha: new Date().toLocaleDateString(),
-                        participante: participanteNombre,
+                        participante: estudianteActual,
                         corregido: false
                     });
                 }
@@ -392,14 +499,12 @@
                 console.error("Error al guardar puntaje en Firestore:", err);
             }
 
-            document.getElementById("quizContainer").style.display = "none";
+            document.getElementById("testArea").style.display = "none";
             const resBox = document.getElementById("resultadoBox");
             const mensajeEstado = document.getElementById("mensajeEstado");
             resBox.style.display = "block";
-            mensajeEstado.innerText = "Se ha completado el protocolo, en proceso de auditoría por administración.";
+            mensajeEstado.innerText = `Protocolo completado por ${estudianteActual}. En proceso de auditoría por administración.`;
         }
-
-        mostrarPregunta();
     </script>
 </body>
 </html>
