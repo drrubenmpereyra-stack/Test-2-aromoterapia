@@ -159,8 +159,8 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAVFOWLQtNdaa_pDW8qvFjajmYY08jn9hY",
@@ -375,12 +375,17 @@
         async function finalizarTest() {
             document.getElementById("progressFill").style.width = "100%";
             
+            // Obtener el nombre del participante (puede venir de localStorage de la sesión principal)
+            let participanteNombre = localStorage.getItem("participanteAromaterapia") || prompt("Por favor, ingrese su Apellido y Nombres completos para registrar su test:") || "Participante Aula";
+
             try {
                 if (db) {
                     await addDoc(collection(db, "resultados_tests"), {
                         test: "Test 2 - Jornada 2",
                         score: puntajeTotal,
-                        fecha: new Date().toISOString()
+                        fecha: new Date().toLocaleDateString(),
+                        participante: participanteNombre,
+                        corregido: false
                     });
                 }
             } catch (err) {
@@ -391,7 +396,7 @@
             const resBox = document.getElementById("resultadoBox");
             const mensajeEstado = document.getElementById("mensajeEstado");
             resBox.style.display = "block";
-            mensajeEstado.innerText = "Se ha completado el protocolo, en proceso de auditoria por administración.";
+            mensajeEstado.innerText = "Se ha completado el protocolo, en proceso de auditoría por administración.";
         }
 
         mostrarPregunta();
