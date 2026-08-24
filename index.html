@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Autoevaluación - Jornada 2</title>
+    <style>
+        :root {
+            --blue-border: #1d3557;
+            --lavender: #a8dadc;
+            --white: #ffffff;
+            --bg-color: #f4f6f9;
+        }
+        body {
+            background-color: var(--bg-color);
+            font-family: Arial, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .test-container {
+            background: var(--white);
+            max-width: 750px;
+            width: 100%;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-top: 6px solid var(--blue-border);
+            box-sizing: border-box;
+        }
+        h1 {
+            color: var(--blue-border);
+            text-align: center;
+            font-size: 1.4rem;
+            margin-bottom: 0.3rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .progress-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: var(--blue-border);
+            height: 100%;
+            width: 10%;
+            transition: width 0.3s ease;
+        }
+        .question-card {
+            margin-bottom: 1.5rem;
+        }
+        .question-title {
+            font-weight: bold;
+            color: var(--blue-border);
+            margin-bottom: 1.2rem;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .option-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: #f8f9fa;
+            padding: 0.9rem 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .option-label:hover {
+            border-color: var(--blue-border);
+            background: #f1faee;
+        }
+        .feedback-box {
+            margin-top: 1.2rem;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            display: none;
+        }
+        .feedback-correct {
+            background: #d8f3dc;
+            color: #2b9348;
+            border: 1px solid #b7e4c7;
+        }
+        .feedback-incorrect {
+            background: #ffe5d9;
+            color: #d90429;
+            border: 1px solid #ffcad4;
+        }
+        .btn-action {
+            background-color: var(--blue-border);
+            color: var(--white);
+            border: none;
+            padding: 0.9rem 2rem;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 1.5rem;
+            display: inline-block;
+            transition: background 0.2s;
+            float: right;
+        }
+        .btn-action:hover {
+            background-color: #457b9d;
+        }
+        #resultadoBox {
+            display: none;
+            text-align: center;
+            padding: 2.5rem;
+            background: #e8f4f8;
+            border-radius: 8px;
+            border: 2px solid var(--blue-border);
+        }
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="test-container">
+        <h1>Test de Autoevaluación - Jornada 2</h1>
+        <p class="subtitle">Seminario de Aromaterapia en Psicoterapia Focalizada y Neurociencias</p>
+        
+        <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+        </div>
+
+        <div id="quizContainer">
+            <!-- Las preguntas se inyectan dinámicamente de a una -->
+        </div>
+
+        <div id="resultadoBox">
+            <h2 style="color: var(--blue-border); margin-top: 0;">Protocolo Completado</h2>
+            <p id="mensajeEstado" style="font-size: 1.1rem; color: #333; line-height: 1.6;"></p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVFOWLQtNdaa_pDW8qvFjajmYY08jn9hY",
+            authDomain: "aromoterapia-convergenci.firebaseapp.com",
+            projectId: "aromoterapia-convergenci",
+            storageBucket: "aromoterapia-convergenci.firebasestorage.app",
+            messagingSenderId: "164268096827",
+            appId: "1:164268096827:web:a9ab4a1bdeb7a3ea9b4b1e"
+        };
+
+        let db = null;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (err) {
+            console.error("Error al conectar Firebase:", err);
+        }
+
+        const preguntasData = [
+            {
+                pregunta: "¿Cuál es el fundamento clínico y efecto terapéutico de los aceites esenciales de Lavandula angustifolia y Citrus aurantium ante la hiperactivación simpática?",
+                opciones: [
+                    "Inducen una sedación farmacológica profunda que anula la asociación libre.",
+                    "Generan un descenso del umbral de alerta defensiva, brindando seguridad fisiológica sin adormecer al sujeto.",
+                    "Estimulan intensamente la actividad dopaminérgica para romper estados de apatía.",
+                    "Actúan como anclajes disociativos para separar la mente del cuerpo.",
+                    "Reemplazan por completo el encuadre analítico tradicional."
+                ],
+                correcta: 1,
+                feedback: "Generan un descenso del umbral de alerta defensiva, brindando una plataforma tónica de seguridad fisiológica sin adormecer al sujeto."
+            },
+            {
+                pregunta: "En los cuadros de bradipsiquia, apatía o duelos congelados (sesiones blancas), ¿qué herramientas moleculares se recomiendan?",
+                opciones: [
+                    "Cedrus atlantica y Boswellia carterii para inducir un anclaje disociativo.",
+                    "Lavandula angustifolia para reducir la hiperactivación simpática severa.",
+                    "Citrus limon, Citrus sinensis y Rosmarinus officinalis quimiotipo cineol, para movilizar circuitos atencionales y romper la inercia asociativa.",
+                    "Cetonas de alta toxicidad para forzar una descarga emocional violenta.",
+                    "Solamente notas de fondo para inducir homeóstasis pasiva."
+                ],
+                correcta: 2,
+                feedback: "Citrus limon, Citrus sinensis y Rosmarinus officinalis quimiotipo cineol movilizan circuitos atencionales y claridad mental, rompiendo la inercia asociativa."
+            },
+            {
+                pregunta: "¿Cómo actúan las moléculas pesadas del Cedro atlántico y el Incienso en estructuras con defensas disociativas o traumas severos?",
+                opciones: [
+                    "Bloquean la amígdala impidiendo cualquier registro mnémico.",
+                    "Actúan sobre los canales TRPV3 y el sistema límbico profundo, convocando al paciente a habitar su corporalidad y delimitando un borde seguro.",
+                    "Generan una hiperactivación simpática instantánea para forzar el recuerdo traumático.",
+                    "Aceleran el ritmo cardíaco para superar la bradipsiquia.",
+                    "Sustituyen la función analítica del terapeuta mediante sugestión directa."
+                ],
+                correcta: 1,
+                feedback: "Actúan sobre los canales TRPV3 y el sistema límbico profundo, convocando al paciente a habitar su corporalidad y delimitando un borde seguro (grounding)."
+            },
+            {
+                pregunta: "Antes de encender un difusor ambiental de manera sistemática, ¿qué evaluación clínica preliminar debe realizar el terapeuta?",
+                opciones: [
+                    "El costo comercial de los aceites esenciales puros.",
+                    "El perfil sensorial del paciente en entrevistas preliminares (si es buscador o evitador sensorial) para evitar vivencias de intrusión.",
+                    "La capacidad pulmonar exacta mediante espirometría clínica obligatoria.",
+                    "Las preferencias estéticas del paciente por los perfumes comerciales.",
+                    "La marca y potencia en vatios del difusor ultrasónico."
+                ],
+                correcta: 1,
+                feedback: "Debe evaluar el perfil sensorial del paciente (si es buscador o evitador sensorial) para prevenir vivencias de intrusión."
+            },
+            {
+                pregunta: "En el marco de la Clínica de la Convergencia, ¿cómo debe introducirse el uso de aromas en el encuadre terapéutico?",
+                opciones: [
+                    "Imponiéndolo de forma sorpresiva para evaluar reacciones inconscientes crudas.",
+                    "Mediante un contrato transparente y consentimiento informado, consultando al paciente si le resulta molesto o prefiere suspenderlo.",
+                    "Ocultando su uso para evitar que el paciente intelectualice el estímulo sensorial.",
+                    "Exigiendo un arancel diferenciado por sesión aromática.",
+                    "Utilizándolo únicamente cuando el paciente lo solicite por escrito."
+                ],
+                correcta: 1,
+                feedback: "Se introduce mediante un contrato transparente y consentimiento informado, ofreciendo la libertad de suspenderlo si resulta molesto."
+            },
+            {
+                pregunta: "¿Cuál es el propósito clínico de la Fase de Apertura (Warm-up) en la implementación de la vaporización?",
+                opciones: [
+                    "Saturar los receptores olfativos para inducir fatiga olfativa inmediata.",
+                    "Vaporizar sutilmente 10 a 15 minutos antes para generar una atmósfera de transición que amortigüe el impacto del estrés urbano exterior.",
+                    "Realizar una prueba alérgica cutánea obligatoria al paciente.",
+                    "Modificar la temperatura ambiente del consultorio en cinco grados.",
+                    "Evaluar la resistencia al cambio mediante la interpretación directa del aroma."
+                ],
+                correcta: 1,
+                feedback: "Consiste en una vaporización sutil previa para generar una atmósfera de transición que amortigüe el impacto del estrés urbano exterior."
+            },
+            {
+                pregunta: "¿Qué función cumplen los últimos minutos de la sesión (Fase de Cierre y Recomposición) tras una descarga emocional profunda?",
+                opciones: [
+                    "Estimular la agudeza mental con aldehídos y óxidos.",
+                    "Priorizar notas reguladoras y contenedoras (como lavanda o incienso) para asegurar el retorno homeostático y la integración psíquica y somática.",
+                    "Prolongar el estado de hiperactivación para facilitar el análisis onírico posterior.",
+                    "Despedir al paciente de forma abrupta para preservar la neutralidad.",
+                    "Inducir un estado de trance hipnótico profundo."
+                ],
+                correcta: 1,
+                feedback: "Priorizan notas reguladoras y contenedoras para asegurar el retorno homeostático y una adecuada integración psíquica y somática."
+            },
+            {
+                pregunta: "¿Cómo se manifiesta técnicamente la Transferencia Olfativa vinculada a los registros arcaicos filogenéticos?",
+                opciones: [
+                    "Como un rechazo puramente químico a los difusores ultrasónicos modernos.",
+                    "Como la movilización fulminante de un imprint temprano, despertando una transferencia idílica o una reacción persecutoria hacia el espacio o el terapeuta.",
+                    "Como una incapacidad física transitoria para percibir olores en el consultorio.",
+                    "Como un déficit exclusivo en los receptores olfativos periféricos.",
+                    "Como una respuesta alérgica mediada por inmunoglobulina E."
+                ],
+                correcta: 1,
+                feedback: "Moviliza un imprint temprano, despertando una transferencia idílica o una reacción transferencial negativa feroz hacia el espacio o el terapeuta."
+            },
+            {
+                pregunta: "¿Qué conducta contratransferencial peligrosa debe vigilar estrictamente el analista respecto al uso de aceites esenciales?",
+                opciones: [
+                    "Utilizarlos de manera omnipotente para calmar su propia ansiedad ante el silencio o la angustia, evitando el conflicto de la cura.",
+                    "Cobrar honorarios excesivos por la vaporización ambiental.",
+                    "Olvidar apagar el difusor al finalizar la jornada laboral.",
+                    "Registrar los aceites esenciales como medicamentos homeopáticos.",
+                    "Confundir los quimiotipos botánicos con esencias sintéticas."
+                ],
+                correcta: 0,
+                feedback: "El analista debe vigilar recurrir a la vaporización omnipotentemente para calmar su propia ansiedad ante el conflicto de la cura."
+            },
+            {
+                pregunta: "Desde la perspectiva ética de la Clínica de la Convergencia, ¿qué lugar ocupa la aromaterapia en el espacio analítico?",
+                opciones: [
+                    "Es una herramienta comercial para transformar el consultorio en un centro holístico de bienestar.",
+                    "Es una herramienta neurobiológica y psicoterapéutica subordinada al discurso y la legalidad del tratamiento, nunca un maquillaje para encubrir la dificultad vincular.",
+                    "Es el eje central e interpretativo absoluto de la cura analítica por encima de la palabra.",
+                    "Es un recurso decorativo optativo sin fundamentación epistemológica.",
+                    "Es una técnica de sugestión directiva para acelerar el alta clínica."
+                ],
+                correcta: 1,
+                feedback: "Es una herramienta neurobiológica y psicoterapéutica subordinada al discurso y la legalidad del tratamiento, nunca un maquillaje para encubrir la dificultad vincular."
+            }
+        ];
+
+        let preguntaActual = 0;
+        let puntajeTotal = 0;
+
+        function mostrarPregunta() {
+            const container = document.getElementById("quizContainer");
+            const p = preguntasData[preguntaActual];
+            const porcentaje = ((preguntaActual) / preguntasData.length) * 100;
+            document.getElementById("progressFill").style.width = `${porcentaje}%`;
+
+            let opcionesHTML = "";
+            p.opciones.forEach((op, index) => {
+                opcionesHTML += `
+                    <label class="option-label">
+                        <input type="radio" name="opcion" value="${index}">
+                        <span>${op}</span>
+                    </label>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="question-card">
+                    <div class="question-title">Pregunta ${preguntaActual + 1} de ${preguntasData.length}: ${p.pregunta}</div>
+                    <div class="options-list">${opcionesHTML}</div>
+                    <div id="feedbackBox" class="feedback-box"></div>
+                </div>
+                <div class="clearfix">
+                    <button id="btnSiguiente" class="btn-action">Responder y Continuar</button>
+                </div>
+            `;
+
+            document.getElementById("btnSiguiente").addEventListener("click", procesarRespuesta);
+        }
+
+        function procesarRespuesta() {
+            const seleccionada = document.querySelector('input[name="opcion"]:checked');
+            const feedbackBox = document.getElementById("feedbackBox");
+            const btn = document.getElementById("btnSiguiente");
+
+            if (!seleccionada) {
+                alert("Por favor, seleccione una opción antes de continuar.");
+                return;
+            }
+
+            const respuestaUsuario = parseInt(seleccionada.value);
+            const p = preguntasData[preguntaActual];
+            
+            document.querySelectorAll('input[name="opcion"]').forEach(inp => inp.disabled = true);
+
+            feedbackBox.style.display = "block";
+            if (respuestaUsuario === p.correcta) {
+                puntajeTotal += 10;
+                feedbackBox.className = "feedback-box feedback-correct";
+                feedbackBox.innerHTML = "✔ Correcto. " + p.feedback;
+            } else {
+                feedbackBox.className = "feedback-box feedback-incorrect";
+                feedbackBox.innerHTML = "✖ Incorrecto. " + p.feedback;
+            }
+
+            if (preguntaActual < preguntasData.length - 1) {
+                btn.innerText = "Siguiente Pregunta ➔";
+                btn.onclick = () => {
+                    preguntaActual++;
+                    mostrarPregunta();
+                };
+            } else {
+                btn.innerText = "Finalizar y Enviar Protocolo";
+                btn.onclick = finalizarTest;
+            }
+        }
+
+        async function finalizarTest() {
+            document.getElementById("progressFill").style.width = "100%";
+            
+            try {
+                if (db) {
+                    await addDoc(collection(db, "resultados_tests"), {
+                        test: "Test 2 - Jornada 2",
+                        score: puntajeTotal,
+                        fecha: new Date().toISOString()
+                    });
+                }
+            } catch (err) {
+                console.error("Error al guardar puntaje en Firestore:", err);
+            }
+
+            document.getElementById("quizContainer").style.display = "none";
+            const resBox = document.getElementById("resultadoBox");
+            const mensajeEstado = document.getElementById("mensajeEstado");
+            resBox.style.display = "block";
+            mensajeEstado.innerText = "Se ha completado el protocolo, en proceso de auditoria por administración.";
+        }
+
+        mostrarPregunta();
+    </script>
+</body>
+</html>
